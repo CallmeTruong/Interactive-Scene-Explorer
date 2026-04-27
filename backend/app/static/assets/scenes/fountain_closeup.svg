@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <rect width="1600" height="900" fill="#ccdfe7"/>
+  <rect y="520" width="1600" height="380" fill="#afa38e"/>
+  <ellipse cx="800" cy="620" rx="520" ry="190" fill="#779aa9"/>
+  <ellipse cx="800" cy="585" rx="360" ry="125" fill="#9fc3cf"/>
+  <rect x="720" y="290" width="160" height="320" rx="28" fill="#8a8f8c"/>
+  <circle cx="800" cy="260" r="95" fill="#9a9f9b"/>
+  <path d="M800 320 C730 420 690 520 670 610" stroke="#e8f6fb" stroke-width="20" fill="none"/>
+  <path d="M800 320 C870 420 910 520 930 610" stroke="#e8f6fb" stroke-width="20" fill="none"/>
+  <text x="70" y="80" font-family="Arial" font-size="38" fill="#263238">Mock fountain closeup</text>
+</svg>
+
