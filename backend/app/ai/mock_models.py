@@ -53,12 +53,15 @@ class MockNextScenePlanner:
         click_target: ClickTarget,
     ) -> SceneBrief:
         label = click_target.label
+        subject = "the selected central object or region" if label == "selected region" else label
         return SceneBrief(
-            summary=f"A closer illustrated view of {label} and nearby details.",
+            summary=f"A closer illustrated exploration of {subject} and nearby details.",
             image_prompt=(
-                f"Create a closer view of {label}. Preserve the same world as: "
-                f"{original_prompt}. Current scene: {current_summary}. "
-                f"Style: {style_prompt}. No text."
+                f"Move the camera toward {subject}. Make {subject} the dominant "
+                "main subject, larger and more detailed than in the previous scene. "
+                "Do not repeat the same full-scene composition. Reveal nearby local "
+                f"details while preserving the same world as: {original_prompt}. "
+                f"Current scene: {current_summary}. Style: {style_prompt}. No text."
             ),
             primary_hotspots=[
                 PlannedHotspot(
@@ -93,8 +96,9 @@ class MockImageGenerator:
         *,
         prompt: str,
         click_target: ClickTarget,
-        width: int,
-        height: int,
+        current_image_url: str | None = None,
+        width: int = 1600,
+        height: int = 900,
     ) -> GeneratedImage:
         if "cathedral" in click_target.label:
             image_name = "cathedral_closeup.svg"

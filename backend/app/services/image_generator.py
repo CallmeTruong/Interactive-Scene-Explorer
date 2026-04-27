@@ -22,12 +22,14 @@ class ImageGenerator:
         *,
         prompt: str,
         click_target: ClickTarget,
+        current_image_url: str | None = None,
         width: int = 1600,
         height: int = 900,
     ) -> GeneratedImage:
         return self._generator.generate_next(
             prompt=prompt,
             click_target=click_target,
+            current_image_url=current_image_url,
             width=width,
             height=height,
         )

@@ -46,3 +46,19 @@ class ClickReadyResponse(BaseModel):
     next_scene: SceneResponse
     transition: TransitionPackage
 
+
+class TransitionPreview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["zoom_hold"]
+    from_bbox: BBox
+    from_mask_url: str | None = None
+
+
+class ClickProcessingResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["processing"]
+    job_id: str
+    click_target: ClickTarget
+    transition_preview: TransitionPreview

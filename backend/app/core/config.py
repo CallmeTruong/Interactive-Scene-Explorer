@@ -11,6 +11,7 @@ class Settings(BaseModel):
     static_url_prefix: str = "/static"
     repository_backend: str = "memory"
     sqlite_path: str = "backend/dev.sqlite3"
+    async_jobs_enabled: bool = True
     image_generator_backend: str = "mock"
     diffusion_model_family: str = "sd15"
     diffusion_checkpoint_path: str = "model/Base_model/dreamshaper_8.safetensors"
@@ -20,6 +21,8 @@ class Settings(BaseModel):
     diffusion_output_height: int = 432
     diffusion_steps: int = 24
     diffusion_guidance_scale: float = 7.0
+    diffusion_img2img_strength: float = 0.62
+    diffusion_focus_crop_padding: float = 1.6
     diffusion_cpu_offload: bool = False
     diffusion_negative_prompt: str = (
         "text, watermark, logo, blurry, low quality, distorted, duplicate objects, cropped"
@@ -39,6 +42,8 @@ def get_settings() -> Settings:
         static_url_prefix=os.getenv("STATIC_URL_PREFIX", "/static"),
         repository_backend=os.getenv("REPOSITORY_BACKEND", "memory"),
         sqlite_path=os.getenv("SQLITE_PATH", "backend/dev.sqlite3"),
+        async_jobs_enabled=os.getenv("ASYNC_JOBS_ENABLED", "true").lower()
+        in {"1", "true", "yes"},
         image_generator_backend=os.getenv("IMAGE_GENERATOR_BACKEND", "mock"),
         diffusion_model_family=os.getenv(
             "DIFFUSION_MODEL_FAMILY",
@@ -66,6 +71,8 @@ def get_settings() -> Settings:
         diffusion_guidance_scale=float(
             os.getenv("DIFFUSION_GUIDANCE_SCALE", os.getenv("SDXL_GUIDANCE_SCALE", "7.0"))
         ),
+        diffusion_img2img_strength=float(os.getenv("DIFFUSION_IMG2IMG_STRENGTH", "0.62")),
+        diffusion_focus_crop_padding=float(os.getenv("DIFFUSION_FOCUS_CROP_PADDING", "1.6")),
         diffusion_cpu_offload=os.getenv(
             "DIFFUSION_CPU_OFFLOAD",
             os.getenv("SDXL_CPU_OFFLOAD", "false"),

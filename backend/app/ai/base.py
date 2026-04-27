@@ -47,6 +47,7 @@ class ImageGeneratorProtocol(Protocol):
         *,
         prompt: str,
         click_target: ClickTarget,
-        width: int,
-        height: int,
+        current_image_url: str | None = None,
+        width: int = 1600,
+        height: int = 900,
     ) -> GeneratedImage: ...
