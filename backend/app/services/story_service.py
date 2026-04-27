@@ -1,6 +1,11 @@
 from backend.app.core.config import settings
+from backend.app.core.errors import not_found
 from backend.app.db.repositories import Repository
-from backend.app.schemas.story import StoryCreateResponse
+from backend.app.schemas.story import (
+    StoryCreateResponse,
+    StorySceneHistoryItem,
+    StorySceneHistoryResponse,
+)
 from backend.app.services.generated_asset_cleaner import GeneratedAssetCleaner
 from backend.app.services.hotspot_detector import HotspotDetector
 from backend.app.services.image_generator import ImageGenerator
@@ -42,6 +47,32 @@ class StoryService:
             input_json={"story_id": story.id, "prompt": prompt, "style": style},
         )
         return StoryCreateResponse(status="processing", story_id=story.id, job_id=job.id)
+
+    def get_scene_history(self, *, story_id: str) -> StorySceneHistoryResponse:
+        """Return scenes for a story in creation order for frontend navigation."""
+        story = self._repository.get_story(story_id)
+        if story is None:
+            raise not_found(f"Story not found: {story_id}")
+
+        scenes = self._repository.list_scenes(story_id)
+        root_scene = next((scene for scene in scenes if scene.parent_scene_id is None), None)
+        return StorySceneHistoryResponse(
+            story_id=story.id,
+            root_scene_id=root_scene.id if root_scene is not None else None,
+            current_scene_id=story.current_scene_id,
+            scenes=[
+                StorySceneHistoryItem(
+                    scene_id=scene.id,
+                    parent_scene_id=scene.parent_scene_id,
+                    parent_click_target=scene.parent_click_target,
+                    image_url=scene.image_url,
+                    summary=scene.summary,
+                    is_root=scene.parent_scene_id is None,
+                    is_current=scene.id == story.current_scene_id,
+                )
+                for scene in scenes
+            ],
+        )
 
     def complete_create_story_job(
         self,

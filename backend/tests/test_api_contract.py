@@ -53,6 +53,17 @@ class ApiContractTest(unittest.TestCase):
         self.assertIsNotNone(click_payload["transition"]["focus"]["to_bbox"])
         self.assertIn("hotspots", click_payload["next_scene"])
 
+        history_response = self.client.get(f"/stories/{story_payload['story_id']}/scenes")
+        self.assertEqual(history_response.status_code, 200)
+        history_payload = history_response.json()
+        self.assertEqual(history_payload["root_scene_id"], story_payload["root_scene_id"])
+        self.assertEqual(len(history_payload["scenes"]), 2)
+        self.assertEqual(history_payload["scenes"][0]["parent_scene_id"], None)
+        self.assertEqual(
+            history_payload["scenes"][1]["parent_scene_id"],
+            scene_payload["scene_id"],
+        )
+
     def test_click_outside_hotspots_returns_fallback_region(self) -> None:
         story_response = self.client.post(
             "/stories",
@@ -127,6 +138,19 @@ class ApiContractTest(unittest.TestCase):
             click_response.json()["next_scene"]["scene_id"],
             prefetch_payload["result"]["next_scene"]["scene_id"],
         )
+
+    def test_demo_reset_clears_repository_records(self) -> None:
+        story_response = self.client.post(
+            "/stories",
+            json={"prompt": "Create an explorable old European town"},
+        )
+        root_scene_id = story_response.json()["root_scene_id"]
+
+        reset_response = self.client.post("/demo/reset")
+
+        self.assertEqual(reset_response.status_code, 200)
+        self.assertEqual(reset_response.json()["status"], "ok")
+        self.assertEqual(self.client.get(f"/scenes/{root_scene_id}").status_code, 404)
 
 
 if __name__ == "__main__":

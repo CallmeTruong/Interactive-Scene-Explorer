@@ -54,6 +54,14 @@ class SQLiteRepository:
             current_scene_id=row["current_scene_id"],
         )
 
+    def list_scenes(self, story_id: str) -> list[SceneRecord]:
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM scenes WHERE story_id = ? ORDER BY rowid",
+                (story_id,),
+            ).fetchall()
+        return [self._scene_from_row(row) for row in rows]
+
     def create_scene(
         self,
         *,

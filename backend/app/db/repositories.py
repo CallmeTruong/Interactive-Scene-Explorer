@@ -12,6 +12,7 @@ class Repository(Protocol):
     def create_story(self, prompt: str, style_prompt: str) -> StoryRecord: ...
     def set_current_scene(self, story_id: str, scene_id: str) -> None: ...
     def get_story(self, story_id: str) -> StoryRecord | None: ...
+    def list_scenes(self, story_id: str) -> list[SceneRecord]: ...
     def create_scene(
         self,
         *,
@@ -60,6 +61,9 @@ class InMemoryRepository:
 
     def get_story(self, story_id: str) -> StoryRecord | None:
         return self.stories.get(story_id)
+
+    def list_scenes(self, story_id: str) -> list[SceneRecord]:
+        return [scene for scene in self.scenes.values() if scene.story_id == story_id]
 
     def create_scene(
         self,

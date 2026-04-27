@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.core.config import settings
-from backend.app.routes import jobs, scenes, stories
+from backend.app.routes import demo, jobs, scenes, stories
 
 
 def create_app() -> FastAPI:
@@ -26,8 +26,8 @@ def create_app() -> FastAPI:
     app.include_router(stories.router)
     app.include_router(scenes.router)
     app.include_router(jobs.router)
+    app.include_router(demo.router)
     return app
 
 
 app = create_app()
-

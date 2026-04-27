@@ -57,6 +57,10 @@ class SQLiteRepositoryTest(unittest.TestCase):
 
             reopened = SQLiteRepository(str(db_path))
             self.assertEqual(reopened.get_story(story.id).current_scene_id, scene.id)
+            self.assertEqual(
+                [record.id for record in reopened.list_scenes(story.id)],
+                [scene.id, child_scene.id],
+            )
             self.assertEqual(reopened.get_scene(child_scene.id).parent_click_target.label, "cathedral")
             self.assertEqual(reopened.list_hotspots(scene.id)[0].label, "cathedral")
             self.assertEqual(reopened.get_job(job.id).status, "done")

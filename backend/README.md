@@ -31,11 +31,14 @@ python -m unittest discover backend/tests
 ## MVP Flow
 
 1. `POST /stories` creates a story, root scene, and mock hotspots.
-2. `GET /scenes/{scene_id}` returns the scene and hotspots.
-3. `POST /scenes/{scene_id}/click` resolves the click into a `ClickTarget`,
+2. `GET /stories/{story_id}/scenes` returns scene history for Back/Root/tree navigation.
+3. `GET /scenes/{scene_id}` returns the scene and hotspots.
+4. `POST /scenes/{scene_id}/click` resolves the click into a `ClickTarget`,
    creates a mock next scene, and returns a `zoom_crossfade` transition.
-4. `POST /scenes/{scene_id}/prefetch` creates and caches the click result behind
+5. `POST /scenes/{scene_id}/prefetch` creates and caches the click result behind
    a completed mock job. A later matching click reuses that cached scene.
+6. `POST /demo/reset` clears local repository records and generated image files
+   for a fresh demo session.
 
 ## Repository Options
 

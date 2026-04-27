@@ -2,7 +2,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 
 from backend.app.core.config import settings
 from backend.app.db.repositories import Repository, get_repository
-from backend.app.schemas.story import StoryCreateRequest, StoryCreateResponse
+from backend.app.schemas.story import (
+    StoryCreateRequest,
+    StoryCreateResponse,
+    StorySceneHistoryResponse,
+)
 from backend.app.services.story_service import StoryService
 
 router = APIRouter(tags=["stories"])
@@ -32,3 +36,11 @@ def create_story(
         return response
 
     return service.create_story(prompt=request.prompt, style=request.style)
+
+
+@router.get("/stories/{story_id}/scenes", response_model=StorySceneHistoryResponse)
+def get_story_scenes(
+    story_id: str,
+    service: StoryService = Depends(get_story_service),
+) -> StorySceneHistoryResponse:
+    return service.get_scene_history(story_id=story_id)
