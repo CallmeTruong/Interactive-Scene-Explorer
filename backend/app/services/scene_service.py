@@ -6,10 +6,13 @@ from backend.app.schemas.job import JobResponse
 from backend.app.schemas.scene import SceneResponse
 from backend.app.schemas.transition import ClickProcessingResponse, ClickReadyResponse, TransitionPreview
 from backend.app.services.click_resolver import ClickResolver
+from backend.app.services.generated_asset_cleaner import GeneratedAssetCleaner
+from backend.app.services.generation_queue import GenerationQueue, GenerationSkipped, generation_queue
 from backend.app.services.hotspot_detector import HotspotDetector
 from backend.app.services.image_generator import ImageGenerator
 from backend.app.services.next_scene_planner import NextScenePlanner
 from backend.app.services.scene_presenter import scene_to_response
+from backend.app.services.stale_background_job import StaleBackgroundJob
 from backend.app.services.transition_builder import TransitionBuilder
 
 
@@ -23,6 +26,8 @@ class SceneService:
         image_generator: ImageGenerator | None = None,
         hotspot_detector: HotspotDetector | None = None,
         transition_builder: TransitionBuilder | None = None,
+        generated_asset_cleaner: GeneratedAssetCleaner | None = None,
+        generation_queue_instance: GenerationQueue | None = None,
     ) -> None:
         self._repository = repository
         self._click_resolver = click_resolver or ClickResolver()
@@ -30,6 +35,8 @@ class SceneService:
         self._image_generator = image_generator or ImageGenerator()
         self._hotspot_detector = hotspot_detector or HotspotDetector()
         self._transition_builder = transition_builder or TransitionBuilder()
+        self._generated_asset_cleaner = generated_asset_cleaner or GeneratedAssetCleaner()
+        self._generation_queue = generation_queue_instance or generation_queue
 
     def get_scene(self, scene_id: str) -> SceneResponse:
         scene = self._repository.get_scene(scene_id)
@@ -116,17 +123,44 @@ class SceneService:
     ) -> None:
         """Generate the click target's next scene and mark the job complete."""
         try:
-            response = self._build_click_response(
-                scene_id=scene_id,
-                x=x,
-                y=y,
-                hotspot_id=hotspot_id,
+            self._generation_queue.run_exclusive(
+                lambda: self._complete_click_job_locked(
+                    job_id=job_id,
+                    scene_id=scene_id,
+                    x=x,
+                    y=y,
+                    hotspot_id=hotspot_id,
+                    cache_key=cache_key,
+                )
             )
-            payload = response.model_dump(mode="json")
-            self._repository.save_click_cache(cache_key, payload)
-            self._repository.complete_job(job_id, payload)
+        except StaleBackgroundJob:
+            return
         except Exception as exc:
-            self._repository.fail_job(job_id, str(exc))
+            self._fail_job_if_present(job_id, str(exc))
+
+    def _complete_click_job_locked(
+        self,
+        *,
+        job_id: str,
+        scene_id: str,
+        x: int,
+        y: int,
+        hotspot_id: str | None,
+        cache_key: str,
+    ) -> None:
+        if not self._job_exists(job_id):
+            return
+        response = self._build_click_response(
+            scene_id=scene_id,
+            x=x,
+            y=y,
+            hotspot_id=hotspot_id,
+        )
+        payload = response.model_dump(mode="json")
+        if not self._job_exists(job_id):
+            return
+        self._repository.save_click_cache(cache_key, payload)
+        self._repository.complete_job(job_id, payload)
 
     def prefetch_click(
         self,
@@ -177,18 +211,25 @@ class SceneService:
         """Queue a click prefetch without blocking the request."""
         cache_key = self._cache_key(scene_id=scene_id, x=x, y=y, hotspot_id=hotspot_id)
         cached = self._repository.get_click_cache(cache_key)
-        job = self._repository.create_job(
-            job_type="prefetch_click",
-            input_json={
-                "scene_id": scene_id,
-                "x": x,
-                "y": y,
-                "hotspot_id": hotspot_id,
-                "cache_key": cache_key,
-            },
-        )
+        job_input = {
+            "scene_id": scene_id,
+            "x": x,
+            "y": y,
+            "hotspot_id": hotspot_id,
+            "cache_key": cache_key,
+        }
+        job = self._repository.create_job(job_type="prefetch_click", input_json=job_input)
         if cached is not None:
             completed = self._repository.complete_job(job.id, cached)
+            return JobResponse(
+                job_id=completed.id,
+                status="done",
+                result=completed.output_json,
+                error=None,
+            )
+        if self._generation_queue.busy:
+            skipped = {"skipped": True, "reason": "generation_busy"}
+            completed = self._repository.complete_job(job.id, skipped)
             return JobResponse(
                 job_id=completed.id,
                 status="done",
@@ -209,19 +250,51 @@ class SceneService:
     ) -> None:
         """Generate and cache a prefetched click result."""
         try:
-            cached = self._repository.get_click_cache(cache_key)
-            if cached is None:
-                response = self._build_click_response(
+            self._generation_queue.try_run_exclusive(
+                lambda: self._complete_prefetch_job_locked(
+                    job_id=job_id,
                     scene_id=scene_id,
                     x=x,
                     y=y,
                     hotspot_id=hotspot_id,
+                    cache_key=cache_key,
                 )
-                cached = response.model_dump(mode="json")
-                self._repository.save_click_cache(cache_key, cached)
-            self._repository.complete_job(job_id, cached)
+            )
+        except GenerationSkipped:
+            self._complete_job_if_present(job_id, {"skipped": True, "reason": "generation_busy"})
+        except StaleBackgroundJob:
+            return
         except Exception as exc:
-            self._repository.fail_job(job_id, str(exc))
+            self._fail_job_if_present(job_id, str(exc))
+
+    def _complete_prefetch_job_locked(
+        self,
+        *,
+        job_id: str,
+        scene_id: str,
+        x: int,
+        y: int,
+        hotspot_id: str | None,
+        cache_key: str,
+    ) -> None:
+        if not self._job_exists(job_id):
+            return
+        cached = self._repository.get_click_cache(cache_key)
+        if cached is None:
+            response = self._build_click_response(
+                scene_id=scene_id,
+                x=x,
+                y=y,
+                hotspot_id=hotspot_id,
+            )
+            cached = response.model_dump(mode="json")
+        if not self._job_exists(job_id):
+            return
+        if self._repository.get_scene(scene_id) is None:
+            return
+        if self._repository.get_click_cache(cache_key) is None:
+            self._repository.save_click_cache(cache_key, cached)
+        self._repository.complete_job(job_id, cached)
 
     def _build_click_response(
         self,
@@ -250,6 +323,7 @@ class SceneService:
         story: StoryRecord,
         click_target: ClickTarget,
     ) -> ClickReadyResponse:
+        self._ensure_scene_context_exists(scene=scene, story=story)
         next_brief = self._next_scene_planner.plan(
             story=story,
             current_scene=scene,
@@ -260,6 +334,11 @@ class SceneService:
             click_target=click_target,
             current_image_url=scene.image_url,
         )
+        try:
+            self._ensure_scene_context_exists(scene=scene, story=story)
+        except StaleBackgroundJob:
+            self._generated_asset_cleaner.remove_url(next_image.image_url)
+            raise
         next_scene = self._repository.create_scene(
             story_id=story.id,
             parent_scene_id=scene.id,
@@ -275,6 +354,7 @@ class SceneService:
             primary_hotspots=next_brief.primary_hotspots,
         )
         self._repository.save_hotspots(next_scene.id, next_hotspots)
+        self._ensure_scene_context_exists(scene=scene, story=story)
         self._repository.set_current_scene(story.id, next_scene.id)
 
         transition = self._transition_builder.build(
@@ -325,3 +405,20 @@ class SceneService:
     def click_cache_key(self, *, scene_id: str, x: int, y: int, hotspot_id: str | None) -> str:
         """Expose the cache key for route-level background task scheduling."""
         return self._cache_key(scene_id=scene_id, x=x, y=y, hotspot_id=hotspot_id)
+
+    def _ensure_scene_context_exists(self, *, scene: SceneRecord, story: StoryRecord) -> None:
+        if self._repository.get_scene(scene.id) is None:
+            raise StaleBackgroundJob()
+        if self._repository.get_story(story.id) is None:
+            raise StaleBackgroundJob()
+
+    def _job_exists(self, job_id: str) -> bool:
+        return self._repository.get_job(job_id) is not None
+
+    def _fail_job_if_present(self, job_id: str, error: str) -> None:
+        if self._job_exists(job_id):
+            self._repository.fail_job(job_id, error)
+
+    def _complete_job_if_present(self, job_id: str, payload: dict) -> None:
+        if self._job_exists(job_id):
+            self._repository.complete_job(job_id, payload)

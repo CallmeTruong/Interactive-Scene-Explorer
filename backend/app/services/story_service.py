@@ -7,8 +7,10 @@ from backend.app.schemas.story import (
     StorySceneHistoryResponse,
 )
 from backend.app.services.generated_asset_cleaner import GeneratedAssetCleaner
+from backend.app.services.generation_queue import GenerationQueue, generation_queue
 from backend.app.services.hotspot_detector import HotspotDetector
 from backend.app.services.image_generator import ImageGenerator
+from backend.app.services.stale_background_job import StaleBackgroundJob
 from backend.app.services.story_planner import StoryPlanner
 
 
@@ -21,12 +23,14 @@ class StoryService:
         image_generator: ImageGenerator | None = None,
         hotspot_detector: HotspotDetector | None = None,
         generated_asset_cleaner: GeneratedAssetCleaner | None = None,
+        generation_queue_instance: GenerationQueue | None = None,
     ) -> None:
         self._repository = repository
         self._story_planner = story_planner or StoryPlanner()
         self._image_generator = image_generator or ImageGenerator()
         self._hotspot_detector = hotspot_detector or HotspotDetector()
         self._generated_asset_cleaner = generated_asset_cleaner or GeneratedAssetCleaner()
+        self._generation_queue = generation_queue_instance or generation_queue
 
     def create_story(self, *, prompt: str, style: str) -> StoryCreateResponse:
         self._clean_generated_assets_for_new_story()
@@ -84,22 +88,50 @@ class StoryService:
     ) -> None:
         """Generate a root scene and mark the create-story job complete."""
         try:
-            root_scene_id = self._create_root_scene_for_story(
-                story_id=story_id,
-                prompt=prompt,
-                style=style,
+            self._generation_queue.run_exclusive(
+                lambda: self._complete_create_story_job_locked(
+                    job_id=job_id,
+                    story_id=story_id,
+                    prompt=prompt,
+                    style=style,
+                )
             )
-            self._repository.complete_job(
-                job_id,
-                {"story_id": story_id, "root_scene_id": root_scene_id},
-            )
+        except StaleBackgroundJob:
+            return
         except Exception as exc:
-            self._repository.fail_job(job_id, str(exc))
+            self._fail_job_if_present(job_id, str(exc))
+
+    def _complete_create_story_job_locked(
+        self,
+        *,
+        job_id: str,
+        story_id: str,
+        prompt: str,
+        style: str,
+    ) -> None:
+        self._ensure_job_and_story_exist(job_id=job_id, story_id=story_id)
+        root_scene_id = self._create_root_scene_for_story(
+            story_id=story_id,
+            prompt=prompt,
+            style=style,
+        )
+        if not self._job_exists(job_id):
+            return
+        self._repository.complete_job(
+            job_id,
+            {"story_id": story_id, "root_scene_id": root_scene_id},
+        )
 
     def _create_root_scene_for_story(self, *, story_id: str, prompt: str, style: str) -> str:
         """Generate image and hotspot records for an existing story."""
+        self._ensure_story_exists(story_id)
         root_brief = self._story_planner.create_root_scene(prompt=prompt, style=style)
         image = self._image_generator.generate_root(prompt=root_brief.image_prompt)
+        try:
+            self._ensure_story_exists(story_id)
+        except StaleBackgroundJob:
+            self._generated_asset_cleaner.remove_url(image.image_url)
+            raise
 
         scene = self._repository.create_scene(
             story_id=story_id,
@@ -114,9 +146,25 @@ class StoryService:
             primary_hotspots=root_brief.primary_hotspots,
         )
         self._repository.save_hotspots(scene.id, hotspots)
+        self._ensure_story_exists(story_id)
         self._repository.set_current_scene(story_id, scene.id)
 
         return scene.id
+
+    def _ensure_job_and_story_exist(self, *, job_id: str, story_id: str) -> None:
+        if not self._job_exists(job_id) or self._repository.get_story(story_id) is None:
+            raise StaleBackgroundJob()
+
+    def _ensure_story_exists(self, story_id: str) -> None:
+        if self._repository.get_story(story_id) is None:
+            raise StaleBackgroundJob()
+
+    def _job_exists(self, job_id: str) -> bool:
+        return self._repository.get_job(job_id) is not None
+
+    def _fail_job_if_present(self, job_id: str, error: str) -> None:
+        if self._job_exists(job_id):
+            self._repository.fail_job(job_id, error)
 
     def _clean_generated_assets_for_new_story(self) -> None:
         """Clear old generated scene files before starting a fresh local demo story."""

@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import urlparse
 
 from backend.app.core.config import settings
 
@@ -23,7 +24,30 @@ class GeneratedAssetCleaner:
                 removed += 1
         return removed
 
+    def remove_url(self, image_url: str) -> bool:
+        image_path = self._resolve_generated_image_path(image_url)
+        if image_path is None or not image_path.exists():
+            return False
+
+        image_path.unlink()
+        return True
+
     def _target_dir(self) -> Path:
         if self._generated_dir is not None:
             return self._generated_dir
         return settings.static_dir / "assets" / "scenes" / "generated"
+
+    def _resolve_generated_image_path(self, image_url: str) -> Path | None:
+        image_path = urlparse(image_url).path
+        static_prefix = settings.static_url_prefix.rstrip("/")
+        if not image_path.startswith(f"{static_prefix}/"):
+            return None
+
+        relative_path = image_path[len(static_prefix) :].lstrip("/")
+        candidate = (settings.static_dir / relative_path).resolve()
+        generated_dir = self._target_dir().resolve()
+        if candidate.parent != generated_dir:
+            return None
+        if candidate.suffix.lower() not in self._allowed_suffixes:
+            return None
+        return candidate

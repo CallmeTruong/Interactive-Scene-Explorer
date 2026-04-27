@@ -77,6 +77,8 @@ class InMemoryRepository:
         parent_click_target: ClickTarget | None = None,
     ) -> SceneRecord:
         with self._lock:
+            if story_id not in self.stories:
+                raise KeyError(story_id)
             scene = SceneRecord(
                 id=new_id("scene"),
                 story_id=story_id,
@@ -95,6 +97,8 @@ class InMemoryRepository:
 
     def save_hotspots(self, scene_id: str, hotspots: list[HotspotRecord]) -> None:
         with self._lock:
+            if scene_id not in self.scenes:
+                raise KeyError(scene_id)
             for hotspot in hotspots:
                 if hotspot.scene_id != scene_id:
                     raise ValueError("Hotspot scene_id does not match target scene.")

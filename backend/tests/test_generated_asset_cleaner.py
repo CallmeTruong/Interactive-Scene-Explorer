@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from backend.app.core.config import settings
 from backend.app.services.generated_asset_cleaner import GeneratedAssetCleaner
 
 
@@ -23,6 +24,20 @@ class GeneratedAssetCleanerTest(unittest.TestCase):
             self.assertFalse(png_path.exists())
             self.assertFalse(webp_path.exists())
             self.assertTrue(svg_path.exists())
+
+    def test_removes_one_generated_image_by_url(self) -> None:
+        generated_dir = settings.static_dir / "assets" / "scenes" / "generated"
+        generated_dir.mkdir(parents=True, exist_ok=True)
+        png_path = generated_dir / "unit_test_scene_old.png"
+        png_path.write_bytes(b"png")
+        self.addCleanup(lambda: png_path.unlink(missing_ok=True))
+
+        removed = GeneratedAssetCleaner().remove_url(
+            "/static/assets/scenes/generated/unit_test_scene_old.png"
+        )
+
+        self.assertTrue(removed)
+        self.assertFalse(png_path.exists())
 
 
 if __name__ == "__main__":

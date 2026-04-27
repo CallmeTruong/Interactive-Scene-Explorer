@@ -94,6 +94,10 @@ When `IMAGE_GENERATOR_BACKEND` is not `mock`, story creation and click handling
 return `processing` responses with a `job_id`. The frontend polls
 `GET /jobs/{job_id}` until the result is ready.
 
+Diffusion generation is guarded by a single-process queue lock. Create-story
+and click jobs wait for the GPU. Hover prefetch is opportunistic: if the GPU is
+busy, it completes with a skipped result instead of starting another generation.
+
 For SDXL checkpoints, set:
 
 ```powershell

@@ -37,10 +37,12 @@ class SQLiteRepository:
 
     def set_current_scene(self, story_id: str, scene_id: str) -> None:
         with self._connection() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 "UPDATE stories SET current_scene_id = ? WHERE id = ?",
                 (scene_id, story_id),
             )
+            if cursor.rowcount == 0:
+                raise KeyError(story_id)
 
     def get_story(self, story_id: str) -> StoryRecord | None:
         with self._connection() as conn:
@@ -73,6 +75,9 @@ class SQLiteRepository:
         parent_scene_id: str | None = None,
         parent_click_target: ClickTarget | None = None,
     ) -> SceneRecord:
+        if self.get_story(story_id) is None:
+            raise KeyError(story_id)
+
         scene = SceneRecord(
             id=new_id("scene"),
             story_id=story_id,
@@ -113,6 +118,9 @@ class SQLiteRepository:
         return self._scene_from_row(row)
 
     def save_hotspots(self, scene_id: str, hotspots: list[HotspotRecord]) -> None:
+        if self.get_scene(scene_id) is None:
+            raise KeyError(scene_id)
+
         with self._connection() as conn:
             for hotspot in hotspots:
                 if hotspot.scene_id != scene_id:
