@@ -62,10 +62,10 @@ $env:DIFFUSION_LORA_PATH="model/Lora/Edward_Hopper-000001.safetensors"
 $env:DIFFUSION_LORA_SCALE="0.8"
 $env:DIFFUSION_OUTPUT_WIDTH="768"
 $env:DIFFUSION_OUTPUT_HEIGHT="432"
-$env:DIFFUSION_STEPS="24"
+$env:DIFFUSION_STEPS="36"
 $env:DIFFUSION_GUIDANCE_SCALE="7.0"
-$env:DIFFUSION_IMG2IMG_STRENGTH="0.62"
-$env:DIFFUSION_FOCUS_CROP_PADDING="1.6"
+$env:DIFFUSION_IMG2IMG_STRENGTH="0.58"
+$env:DIFFUSION_FOCUS_CROP_PADDING="2.8"
 $env:DIFFUSION_CPU_OFFLOAD="false"
 
 python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
@@ -84,11 +84,11 @@ The frontend contract is unchanged. Hotspots are still mock bboxes until
 GroundingDINO is added.
 
 Root scenes use text-to-image. Next scenes use image-to-image with a 16:9 crop
-around the clicked target as the reference image, so the next scene explores the
-selected object instead of repeating the whole root composition. Lowering
-`DIFFUSION_IMG2IMG_STRENGTH` preserves more of that crop and raising it allows
-larger changes. Raising `DIFFUSION_FOCUS_CROP_PADDING` includes more surrounding
-context; lowering it makes the next scene tighter on the clicked target.
+around the clicked target as the reference image. Lowering
+`DIFFUSION_IMG2IMG_STRENGTH` preserves more context from that crop; raising it
+allows larger changes but can drift into unrelated scenes. Raising
+`DIFFUSION_FOCUS_CROP_PADDING` includes more surrounding context; lowering it
+makes the next scene tighter on the clicked target.
 
 When `IMAGE_GENERATOR_BACKEND` is not `mock`, story creation and click handling
 return `processing` responses with a `job_id`. The frontend polls

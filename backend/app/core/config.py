@@ -22,11 +22,12 @@ class Settings(BaseModel):
     diffusion_output_height: int = 432
     diffusion_steps: int = 24
     diffusion_guidance_scale: float = 7.0
-    diffusion_img2img_strength: float = 0.62
-    diffusion_focus_crop_padding: float = 1.6
+    diffusion_img2img_strength: float = 0.58
+    diffusion_focus_crop_padding: float = 2.8
     diffusion_cpu_offload: bool = False
     diffusion_negative_prompt: str = (
-        "text, watermark, logo, blurry, low quality, distorted, duplicate objects, cropped"
+        "text, watermark, logo, blurry, low quality, distorted, duplicate objects, "
+        "cropped, different location, unrelated scene, inconsistent architecture"
     )
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
@@ -77,8 +78,8 @@ def get_settings() -> Settings:
         diffusion_guidance_scale=float(
             os.getenv("DIFFUSION_GUIDANCE_SCALE", os.getenv("SDXL_GUIDANCE_SCALE", "7.0"))
         ),
-        diffusion_img2img_strength=float(os.getenv("DIFFUSION_IMG2IMG_STRENGTH", "0.62")),
-        diffusion_focus_crop_padding=float(os.getenv("DIFFUSION_FOCUS_CROP_PADDING", "1.6")),
+        diffusion_img2img_strength=float(os.getenv("DIFFUSION_IMG2IMG_STRENGTH", "0.58")),
+        diffusion_focus_crop_padding=float(os.getenv("DIFFUSION_FOCUS_CROP_PADDING", "2.8")),
         diffusion_cpu_offload=os.getenv(
             "DIFFUSION_CPU_OFFLOAD",
             os.getenv("SDXL_CPU_OFFLOAD", "false"),
@@ -88,7 +89,10 @@ def get_settings() -> Settings:
             "DIFFUSION_NEGATIVE_PROMPT",
             os.getenv(
                 "SDXL_NEGATIVE_PROMPT",
-                "text, watermark, logo, blurry, low quality, distorted, duplicate objects, cropped",
+                (
+                    "text, watermark, logo, blurry, low quality, distorted, duplicate objects, "
+                    "cropped, different location, unrelated scene, inconsistent architecture"
+                ),
             ),
         ),
     )

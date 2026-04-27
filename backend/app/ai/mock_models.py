@@ -57,11 +57,12 @@ class MockNextScenePlanner:
         return SceneBrief(
             summary=f"A closer illustrated exploration of {subject} and nearby details.",
             image_prompt=(
-                f"Move the camera toward {subject}. Make {subject} the dominant "
-                "main subject, larger and more detailed than in the previous scene. "
-                "Do not repeat the same full-scene composition. Reveal nearby local "
-                f"details while preserving the same world as: {original_prompt}. "
-                f"Current scene: {current_summary}. Style: {style_prompt}. No text."
+                f"Move the camera closer to {subject} within the same location. "
+                f"Make {subject} the dominant main subject, larger and more detailed, "
+                "while preserving the surrounding architecture, materials, lighting, "
+                f"weather, and time of day from the current scene: {current_summary}. "
+                f"Keep the same story world as: {original_prompt}. Do not invent a new "
+                f"location or unrelated background. Style: {style_prompt}. No text."
             ),
             primary_hotspots=[
                 PlannedHotspot(

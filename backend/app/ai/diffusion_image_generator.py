@@ -29,10 +29,12 @@ class DiffusionImageGenerator:
     ) -> GeneratedImage:
         subject = self._subject_label(click_target)
         focused_prompt = (
-            f"{prompt}. The clicked target is {subject}. Move the camera toward "
-            f"{subject}; make it the dominant main subject, larger and more detailed. "
-            "Do not keep the same full-scene composition or the same object placement. "
-            "Use the reference only for visual continuity, not as a fixed layout."
+            f"{prompt}. The clicked target is {subject}. Create a closer contextual "
+            f"view of {subject} in the same place. Make {subject} larger and more "
+            "detailed, but keep the surrounding architecture, materials, lighting, "
+            "weather, color palette, and time of day consistent with the reference. "
+            "Preserve nearby visible landmarks when possible. Do not invent a new "
+            "location, unrelated background, or different scene."
         )
         reference_image = self._load_reference_image(current_image_url)
         if reference_image is not None:
