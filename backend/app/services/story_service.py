@@ -1,5 +1,7 @@
+from backend.app.core.config import settings
 from backend.app.db.repositories import Repository
 from backend.app.schemas.story import StoryCreateResponse
+from backend.app.services.generated_asset_cleaner import GeneratedAssetCleaner
 from backend.app.services.hotspot_detector import HotspotDetector
 from backend.app.services.image_generator import ImageGenerator
 from backend.app.services.story_planner import StoryPlanner
@@ -13,13 +15,16 @@ class StoryService:
         story_planner: StoryPlanner | None = None,
         image_generator: ImageGenerator | None = None,
         hotspot_detector: HotspotDetector | None = None,
+        generated_asset_cleaner: GeneratedAssetCleaner | None = None,
     ) -> None:
         self._repository = repository
         self._story_planner = story_planner or StoryPlanner()
         self._image_generator = image_generator or ImageGenerator()
         self._hotspot_detector = hotspot_detector or HotspotDetector()
+        self._generated_asset_cleaner = generated_asset_cleaner or GeneratedAssetCleaner()
 
     def create_story(self, *, prompt: str, style: str) -> StoryCreateResponse:
+        self._clean_generated_assets_for_new_story()
         story = self._repository.create_story(prompt=prompt, style_prompt=style)
         root_scene_id = self._create_root_scene_for_story(
             story_id=story.id,
@@ -30,6 +35,7 @@ class StoryService:
 
     def start_create_story_job(self, *, prompt: str, style: str) -> StoryCreateResponse:
         """Create the story record now and generate its root scene in a background job."""
+        self._clean_generated_assets_for_new_story()
         story = self._repository.create_story(prompt=prompt, style_prompt=style)
         job = self._repository.create_job(
             job_type="create_story",
@@ -80,3 +86,8 @@ class StoryService:
         self._repository.set_current_scene(story_id, scene.id)
 
         return scene.id
+
+    def _clean_generated_assets_for_new_story(self) -> None:
+        """Clear old generated scene files before starting a fresh local demo story."""
+        if settings.cleanup_generated_assets_on_new_story:
+            self._generated_asset_cleaner.clean()

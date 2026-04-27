@@ -41,6 +41,10 @@ class ApiContractTest(unittest.TestCase):
 
         self.assertEqual(click_payload["status"], "ready")
         self.assertEqual(click_payload["click_target"]["source"], "hotspot_id")
+        self.assertEqual(
+            click_payload["next_scene"]["parent_scene_id"],
+            scene_payload["scene_id"],
+        )
         self.assertEqual(click_payload["transition"]["mode"], "bbox_to_bbox_morph")
         self.assertEqual(
             click_payload["transition"]["focus"]["from_bbox"],

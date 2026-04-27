@@ -12,6 +12,7 @@ class Settings(BaseModel):
     repository_backend: str = "memory"
     sqlite_path: str = "backend/dev.sqlite3"
     async_jobs_enabled: bool = True
+    cleanup_generated_assets_on_new_story: bool = True
     image_generator_backend: str = "mock"
     diffusion_model_family: str = "sd15"
     diffusion_checkpoint_path: str = "model/Base_model/dreamshaper_8.safetensors"
@@ -43,6 +44,11 @@ def get_settings() -> Settings:
         repository_backend=os.getenv("REPOSITORY_BACKEND", "memory"),
         sqlite_path=os.getenv("SQLITE_PATH", "backend/dev.sqlite3"),
         async_jobs_enabled=os.getenv("ASYNC_JOBS_ENABLED", "true").lower()
+        in {"1", "true", "yes"},
+        cleanup_generated_assets_on_new_story=os.getenv(
+            "CLEANUP_GENERATED_ASSETS_ON_NEW_STORY",
+            "true",
+        ).lower()
         in {"1", "true", "yes"},
         image_generator_backend=os.getenv("IMAGE_GENERATOR_BACKEND", "mock"),
         diffusion_model_family=os.getenv(

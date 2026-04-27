@@ -52,6 +52,7 @@ LoRA:
 python -m pip install -e ".[sdxl]"
 
 $env:IMAGE_GENERATOR_BACKEND="diffusion"
+$env:CLEANUP_GENERATED_ASSETS_ON_NEW_STORY="true"
 $env:DIFFUSION_MODEL_FAMILY="sd15"
 $env:DIFFUSION_CHECKPOINT_PATH="model/Base_model/dreamshaper_8.safetensors"
 $env:DIFFUSION_LORA_PATH="model/Lora/Edward_Hopper-000001.safetensors"
@@ -72,6 +73,9 @@ Generated images are saved under:
 ```text
 backend/app/static/assets/scenes/generated/
 ```
+
+When `CLEANUP_GENERATED_ASSETS_ON_NEW_STORY` is `true`, starting a new story
+removes old generated image files from that directory.
 
 The frontend contract is unchanged. Hotspots are still mock bboxes until
 GroundingDINO is added.
