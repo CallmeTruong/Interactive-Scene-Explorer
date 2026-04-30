@@ -4,26 +4,12 @@ from diffusers import StableDiffusionPipeline, DPMSolverSinglestepScheduler
 
 BASE_MODEL = Path(r"D:\interactive-scene-explorer\model\Base_model\epiCRealism_Natural Sin RC1 VAE.safetensors")
 LORA_DIR = Path(r"D:\interactive-scene-explorer\model\Lora")
-LORA_NAME = "【Worldwide Premiere】 Luban - Wooden Product Image_V1.0.safetensors"
+LORA_NAME = "IsoPixelV2-SD15.safetensors"
 LORA_SCALE = 0.65
 
-PROMPT = """
-architectural concept art, hand-drawn ink sketch with light watercolor illustration,
-loose expressive linework, single unified scene showing roman architectural complex,
-colosseum arena, triumphal arch gate, aqueduct bridge, temple facade,
-arranged in natural spatial depth, foreground midground background layers,
-isometric perspective with vanishing point, cast shadows and ambient occlusion,
-volumetric soft lighting,
-soft muted earth tones, sepia ink lines, subtle pastel color,
-professional architectural illustration, editorial sketch style
-"""
+PROMPT = """Watercolor illustration style, Isometric view of a flat city print. The product is divided into 3 distinct modular sections, with each section hovering precisely in 3D space."""
 
 NEGATIVE_PROMPT = """
-flat diagram, technical blueprint, orthographic projection, no depth,
-multiple disconnected views on white paper, infographic layout, callout lines,
-dimension arrows, text labels, annotations, watermark, signature,
-photorealistic render, 3d cgi, plastic, sterile, cold lighting,
-crowded overlapping composition, blurry, low quality, distorted
 """
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
